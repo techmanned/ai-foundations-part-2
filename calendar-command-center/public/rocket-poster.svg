@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="Rocket launching from Earth into space">
+  <defs>
+    <radialGradient id="space" cx="70%" cy="20%" r="80%">
+      <stop offset="0" stop-color="#12325f"/>
+      <stop offset="0.55" stop-color="#071225"/>
+      <stop offset="1" stop-color="#020611"/>
+    </radialGradient>
+    <linearGradient id="earth" x1="0" x2="1">
+      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="0.55" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#space)"/>
+  <circle cx="134" cy="105" r="2" fill="#fff"/>
+  <circle cx="322" cy="184" r="2" fill="#fff"/>
+  <circle cx="823" cy="86" r="2" fill="#fff"/>
+  <circle cx="1090" cy="202" r="2" fill="#fff"/>
+  <circle cx="1000" cy="330" r="1.5" fill="#fff"/>
+  <circle cx="640" cy="970" r="520" fill="url(#earth)"/>
+  <path d="M585 565h110l-34 90h-42z" fill="#f8fafc"/>
+  <path d="M640 470c38 38 55 76 55 95H585c0-19 17-57 55-95z" fill="#ef4444"/>
+  <path d="M620 565h40v96h-40z" fill="#e5e7eb"/>
+  <path d="M619 661h42l-21 59z" fill="#f97316"/>
+</svg>
