@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>pi-rag-notes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Local Raspberry Pi Demo</p>
+        <h1>pi-rag-notes</h1>
+      </div>
+      <div class="chunk-pill"><span id="chunkCount">{{ chunk_count }}</span> chunks stored</div>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div>
+          <h2>What RAG Means</h2>
+          <p>Retrieval-Augmented Generation means answering a question by first retrieving useful source text. This demo uses local notes, simple vectors, and a small extractive answer.</p>
+        </div>
+        <ol class="flow">
+          <li>Documents are split into chunks.</li>
+          <li>Chunks are converted into vectors.</li>
+          <li>A user question is converted into a vector.</li>
+          <li>The app finds the most similar chunks.</li>
+          <li>The app creates a simple answer using the retrieved chunks.</li>
+        </ol>
+      </section>
+
+      <section class="grid">
+        <div class="panel">
+          <h2>Add Notes</h2>
+          <textarea id="notesInput" placeholder="Paste class notes, maintenance notes, setup steps, or short documents here."></textarea>
+          <div class="actions">
+            <button id="addBtn">Add to Knowledge Base</button>
+            <button id="sampleBtn" class="secondary">Load Sample Dataset</button>
+            <button id="shipSystemsBtn" class="secondary">Load Ship Systems Web Dataset</button>
+            <button id="resetBtn" class="danger">Reset Knowledge Base</button>
+          </div>
+          <p id="addMessage" class="message"></p>
+        </div>
+
+        <div class="panel">
+          <h2>Ask a Question</h2>
+          <input id="questionInput" type="text" placeholder="Example: What does the ballast water system do?">
+          <button id="askBtn">Ask Question</button>
+          <div id="answerBox" class="answer empty">
+            <h3>Simple extractive answer</h3>
+            <p>Add notes or load the sample dataset, then ask a question.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel full">
+        <h2>Retrieved Chunks</h2>
+        <div id="results"></div>
+      </section>
+
+      <section class="how">
+        <h2>How the Vector Search Works</h2>
+        <div class="explain-grid">
+          <article>
+            <h3>Chunking</h3>
+            <p>Long notes are split into smaller pieces of about 500 characters. Smaller chunks make retrieval easier to inspect.</p>
+          </article>
+          <article>
+            <h3>TF-IDF</h3>
+            <p>TF-IDF gives more weight to words that are important in one chunk but not common across every chunk.</p>
+          </article>
+          <article>
+            <h3>Vectors</h3>
+            <p>Each chunk becomes a list of numbers. The question is converted into the same vector space.</p>
+          </article>
+          <article>
+            <h3>Cosine Similarity</h3>
+            <p>Cosine similarity compares vector direction. Higher scores mean the question and chunk use more related words.</p>
+          </article>
+          <article>
+            <h3>Retrieval</h3>
+            <p>The app returns the top three matching chunks and shows their similarity scores.</p>
+          </article>
+          <article>
+            <h3>Simplified RAG</h3>
+            <p>A real RAG system often sends retrieved chunks to an LLM. This app stays fully local and combines retrieved text into a simple extractive answer.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const chunkCount = document.querySelector("#chunkCount");
+      const notesInput = document.querySelector("#notesInput");
+      const questionInput = document.querySelector("#questionInput");
+      const addMessage = document.querySelector("#addMessage");
+      const answerBox = document.querySelector("#answerBox");
+      const resultsBox = document.querySelector("#results");
+
+      async function postJson(url, payload = {}) {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload)
+        });
+        return response.json();
+      }
+
+      function setChunkCount(count) {
+        chunkCount.textContent = count;
+      }
+
+      document.querySelector("#addBtn").addEventListener("click", async () => {
+        const data = await postJson("/api/add", {text: notesInput.value});
+        setChunkCount(data.chunk_count);
+        addMessage.textContent = data.added ? `Added ${data.added} chunk(s).` : "Paste some text before adding notes.";
+        if (data.added) notesInput.value = "";
+      });
+
+      document.querySelector("#sampleBtn").addEventListener("click", async () => {
+        const data = await postJson("/api/sample");
+        setChunkCount(data.chunk_count);
+        addMessage.textContent = `Loaded ${data.added} sample chunk(s).`;
+      });
+
+      document.querySelector("#shipSystemsBtn").addEventListener("click", async () => {
+        const data = await postJson("/api/ship-systems");
+        setChunkCount(data.chunk_count);
+        addMessage.textContent = `Loaded ${data.added} ship systems chunk(s).`;
+      });
+
+      document.querySelector("#resetBtn").addEventListener("click", async () => {
+        const data = await postJson("/api/reset");
+        setChunkCount(data.chunk_count);
+        addMessage.textContent = "Knowledge base reset.";
+        resultsBox.innerHTML = "";
+        answerBox.className = "answer empty";
+        answerBox.innerHTML = "<h3>Simple extractive answer</h3><p>Add notes or load the sample dataset, then ask a question.</p>";
+      });
+
+      document.querySelector("#askBtn").addEventListener("click", async () => {
+        const data = await postJson("/api/ask", {question: questionInput.value});
+        setChunkCount(data.chunk_count);
+        answerBox.className = "answer";
+        answerBox.innerHTML = `<h3>Simple extractive answer</h3><p>${escapeHtml(data.answer)}</p>`;
+        renderResults(data.results);
+      });
+
+      function renderResults(results) {
+        if (!results.length) {
+          resultsBox.innerHTML = "<p class='muted'>No relevant chunks found.</p>";
+          return;
+        }
+        resultsBox.innerHTML = results.map((result, index) => `
+          <article class="result">
+            <div class="result-head">
+              <strong>Chunk ${index + 1}: ${escapeHtml(result.source)}</strong>
+              <span>score ${result.score}</span>
+            </div>
+            <p>${escapeHtml(result.text)}</p>
+          </article>
+        `).join("");
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+    </script>
+  </body>
+</html>
